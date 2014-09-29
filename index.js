@@ -6,7 +6,7 @@
 var client = require('redis').createClient;
 var parser = require('socket.io-parser');
 var hasBin = require('has-binary-data');
-var msgpack = require('msgpack-js').encode;
+var msgpack = require('msgpack-js');
 var debug = require('debug')('socket.io-emitter');
 
 /**
@@ -58,6 +58,7 @@ function Emitter(redis, opts){
 
   this.redis = redis;
   this.key = (opts.key || 'socket.io') + '#emitter';
+  this.codec = opts.codec || 'none';
 
   this._rooms = [];
   this._flags = {};
@@ -123,7 +124,7 @@ Emitter.prototype.emit = function(){
   }
 
   // publish
-  this.redis.publish(this.key, msgpack([packet, {
+  this.redis.publish(this.key, encode(this.codec, [packet, {
     rooms: this._rooms,
     flags: this._flags
   }]));
@@ -147,4 +148,17 @@ Emitter.prototype.emit = function(){
 function clientUri(uri){
   uri = uri.split(':');
   return client(uri[1], uri[0]);
+}
+
+/**
+ * encode.
+ */
+
+function encode(codec, data) {
+  switch(codec) {
+    case 'msgpack':
+      return msgpack.encode(data);
+    default:
+      return JSON.stringify(data);
+  }
 }
